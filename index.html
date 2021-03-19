@@ -19,7 +19,7 @@
         <div class="mdc-top-app-bar__row">
             <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-start">
 
-                <span class="mdc-top-app-bar__title">Integer Map Designer</span>
+                <span class="mdc-top-app-bar__title">Magswag's Integer Map Designer</span>
             </section>
             <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-end" role="toolbar">
                 <button class="material-icons mdc-top-app-bar__action-item mdc-icon-button" onclick="download()"
@@ -31,7 +31,7 @@
         <canvas id="myCanvas" width="1024" height="1024" style="border:1px solid #000000;"></canvas>
 
         <div class="mdc-slider mdc-slider--discrete">
-            <input class="mdc-slider__input" type="range" min="2" max="256" value="16" name="resolution" step="1"
+            <input class="mdc-slider__input" type="range" min="2" max="256" value="32" name="resolution" step="1"
                 aria-label="Discrete slider resolution">
             <div class="mdc-slider__track">
                 <div class="mdc-slider__track--inactive"></div>
@@ -43,12 +43,13 @@
                 <div class="mdc-slider__value-indicator-container" aria-hidden="true">
                     <div class="mdc-slider__value-indicator">
                         <span class="mdc-slider__value-indicator-text">
-                            16
+                            32
                         </span>
                     </div>
                 </div>
                 <div class="mdc-slider__thumb-knob"></div>
             </div>
+            <p id="current-resolution">32</p>
         </div>
     </main>
 
@@ -58,16 +59,103 @@
         let resol = 32
         let slider
         let c
+
         let isDrawing = false
         let lastMouseButton = 0
-        let musX = 0
-        let musY = 0
+
+        let mouseX = 0
+        let mouseY = 0
+
+        let pMouseX = 0
+        let pMouseY = 0
+
         let data = []
+
+        function isEmpty() {
+            for (let i = 0; i < data.length; i++) {
+                if (data[i] == 1) return false
+            }
+            return true
+        }
 
         function resolutionChanged() {
             resol = slider.getValue()
             data = Array(resol * resol).fill(0)
 
+            document.getElementById("current-resolution").innerHTML = resol
+
+            drawGrid()
+        }
+
+        function screenToGrid(x0, y0) {
+            let xInterval = c.width / resol
+            let yInterval = c.height / resol
+
+            let x = Math.floor(x0 / xInterval)
+            let y = Math.floor(y0 / yInterval)
+
+            return { x, y }
+        }
+
+        function drawLineLow(x0, y0, x1, y1) {
+            let dX = x1 - x0
+            let dY = y1 - y0
+            let yi = 1
+            if (dY < 0) {
+                yi = -1
+                dY = -dY
+            }
+            let D = (2 * dY) - dX
+            let y = y0
+
+            for (let x = x0; x < x1; x++) {
+                modifyTile(x, y, false)
+                if (D > 0) {
+                    y += yi
+                    D += (2 * (dY - dX))
+                } else {
+                    D += 2 * dY
+                }
+            }
+        }
+
+        function drawLineHigh(x0, y0, x1, y1) {
+            let dX = x1 - x0
+            let dY = y1 - y0
+            let xi = 1
+            if (dX < 0) {
+                xi = -1
+                dX = -dX
+            }
+            let D = (2 * dX) - dY
+            let x = x0
+
+            for (let y = y0; x < y1; y++) {
+                modifyTile(x, y, false)
+                if (D > 0) {
+                    x += xi
+                    D += (2 * (dX - dY))
+                } else {
+                    D += 2 * dX
+                }
+            }
+        }
+
+        // Draw line on grid using Bresenham algorithm(https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm)
+        function drawLine(x0, y0, x1, y1) {
+            if (Math.abs(y1 - y0) < Math.abs(x1 - x0)) {
+                if (x0 > x1) {
+                    drawLineLow(x1, y1, x0, y0)
+                } else {
+                    drawLineLow(x0, y0, x1, y1)
+                }
+            } else {
+                if (y0 > y1) {
+                    drawLineHigh(x1, y1, x0, y0)
+                } else {
+                    drawLineHigh(x0, y0, x1, y1)
+                }
+            }
             drawGrid()
         }
 
@@ -105,59 +193,73 @@
             }
         }
 
-        function modifyTile(shouldErase) {
-            let xInterval = c.width / resol
-            let yInterval = c.height / resol
-
-            let xx = Math.floor(musX / xInterval)
-            let yy = Math.floor(musY / yInterval)
-
-            data[resol * yy + xx] = shouldErase ? 0 : 1
-
-            drawGrid()
+        function modifyTile(x, y, shouldErase) {
+            data[resol * y + x] = shouldErase ? 0 : 1
         }
 
         c = document.getElementById("myCanvas")
         c.oncontextmenu = (e) => { e.preventDefault(); e.stopPropagation(); }
 
         c.addEventListener('mousedown', e => {
-            musX = e.offsetX;
-            musY = e.offsetY;
-            isDrawing = true;
+            mouseX = e.offsetX;
+            mouseY = e.offsetY;
 
+            pMouseX = mouseX
+            pMouseY = mouseY
+
+            isDrawing = true;
             lastMouseButton = e.button
 
+            let xInterval = c.width / resol
+            let yInterval = c.height / resol
+
+            let xx = Math.floor(mouseX / xInterval)
+            let yy = Math.floor(mouseY / yInterval)
+
             switch (e.button) {
-                    case 0:
-                        modifyTile(false)
-                        break;
-                    case 2:
-                        modifyTile(true)
-                        break;
-                }
+                case 0:
+                    modifyTile(xx, yy, false)
+                    break;
+                case 2:
+                    modifyTile(xx, yy, true)
+                    break;
+            }
+            drawGrid();
         });
 
         c.addEventListener('mousemove', e => {
             if (isDrawing === true) {
-                musX = e.offsetX
-                musY = e.offsetY
+                mouseX = e.offsetX
+                mouseY = e.offsetY
+
+                let yurr = screenToGrid(pMouseX, pMouseY)
+                let yurr2 = screenToGrid(mouseX, mouseY)
 
                 switch (lastMouseButton) {
                     case 0:
-                        modifyTile(false)
+                        //drawLine(yurr.x, yurr.y, yurr2.x, yurr2.y, false)
+                        modifyTile(yurr2.x, yurr2.y, false)
                         break;
                     case 2:
-                        modifyTile(true)
+                        //drawLine(pMouseX, pMouseY, mouseX, mouseY, true)
+                        modifyTile(yurr2.x, yurr2.y, true)
                         break;
                 }
+                drawGrid()
             }
         });
 
         window.addEventListener('mouseup', e => {
             if (isDrawing === true) {
-                musX = 0;
-                musY = 0;
+
                 isDrawing = false;
+                let yrr = screenToGrid(pMouseX, pMouseY)
+                let aras = screenToGrid(mouseX, mouseY)
+
+                //drawLine(yrr.x, yrr.y, aras.x, aras.y)
+
+                mouseX = 0;
+                mouseY = 0;
             }
         });
 
@@ -171,7 +273,23 @@
         }
 
         resolutionChanged()
-        document.querySelector('.mdc-slider').addEventListener("MDCSlider:change", resolutionChanged)
+
+        //drawLine(2, 2, 15, 13)
+        document.querySelector('.mdc-slider').addEventListener("MDCSlider:change", () => {
+            if(!isEmpty()) {
+                if(confirm("This will clear the map.")) {
+                    resolutionChanged()
+                } else {
+                    slider.setValue(resol)
+                }
+            }
+        })
+        document.querySelector('.mdc-slider').addEventListener("MDCSlider:input", () => {
+            if (isEmpty()) {
+                resolutionChanged()
+            }
+        })
+
 
         function download() {
             let counter = 0
