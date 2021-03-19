@@ -24,10 +24,12 @@
             <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-end" role="toolbar">
                 <button class="material-icons mdc-top-app-bar__action-item mdc-icon-button" onclick="download()"
                     aria-label="Download file">file_download</button>
+                <button class="material-icons mdc-top-app-bar__action-item mdc-icon-button" onclick="help()"
+                    aria-label="Help">help</button>
             </section>
         </div>
     </header>
-    <main class="mdc-top-app-bar--fixed-adjust">
+    <main class="mdc-top-app-bar--fixed-adjust" style="text-align: center;">
         <canvas id="myCanvas" width="1024" height="1024" style="border:1px solid #000000;"></canvas>
 
         <div class="mdc-slider mdc-slider--discrete">
@@ -49,11 +51,34 @@
                 </div>
                 <div class="mdc-slider__thumb-knob"></div>
             </div>
-            <p id="current-resolution">32</p>
+
         </div>
+        <p id="current-resolution">32</p>
+        <label for="file" >Load map:</label>
+
+        <input type="file" id="file" name="file" accept=".txt" >
     </main>
 
-
+    <div class="mdc-dialog">
+        <div class="mdc-dialog__container">
+            <div class="mdc-dialog__surface" role="alertdialog" aria-modal="true" aria-labelledby="my-dialog-title"
+                aria-describedby="my-dialog-content">
+                <h2 class="mdc-dialog__title" id="my-dialog-title">Help</h2>
+                <div class="mdc-dialog__content" id="my-dialog-content">
+                    Left Mouse Button: Draw tiles <br>
+                    Right Mouse Button: Erase tiles <br>
+                    Shift: Horizontal/vertical draw/erase
+                </div>
+                <div class="mdc-dialog__actions">
+                    <button type="button" class="mdc-button mdc-dialog__button" data-mdc-dialog-action="cancel">
+                        <div class="mdc-button__ripple"></div>
+                        <span class="mdc-button__label">Cancel</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="mdc-dialog__scrim"></div>
+    </div>
 
     <script>
         let resol = 32
@@ -70,6 +95,9 @@
         let pMouseY = 0
 
         let data = []
+
+        let shiftPressed = false
+
 
         function isEmpty() {
             for (let i = 0; i < data.length; i++) {
@@ -235,14 +263,39 @@
                 let yurr = screenToGrid(pMouseX, pMouseY)
                 let yurr2 = screenToGrid(mouseX, mouseY)
 
+                let up = false
+
+                let deltaX = Math.abs(mouseX - pMouseX)
+                let deltaY = Math.abs(mouseY - pMouseY)
+
+                if (deltaY > deltaX) {
+                    up = true
+                }
+
                 switch (lastMouseButton) {
                     case 0:
                         //drawLine(yurr.x, yurr.y, yurr2.x, yurr2.y, false)
-                        modifyTile(yurr2.x, yurr2.y, false)
+                        if (shiftPressed) {
+                            if (up) {
+                                modifyTile(screenToGrid(pMouseX, pMouseX).x, yurr2.y, false)
+                            } else {
+                                modifyTile(yurr2.x, screenToGrid(pMouseY, pMouseY).y, false)
+                            }
+                        } else {
+                            modifyTile(yurr2.x, yurr2.y, false)
+                        }
                         break;
                     case 2:
                         //drawLine(pMouseX, pMouseY, mouseX, mouseY, true)
-                        modifyTile(yurr2.x, yurr2.y, true)
+                        if (shiftPressed) {
+                            if (up) {
+                                modifyTile(screenToGrid(pMouseX, pMouseX).x, yurr2.y, true)
+                            } else {
+                                modifyTile(yurr2.x, screenToGrid(pMouseY, pMouseY).y, true)
+                            }
+                        } else {
+                            modifyTile(yurr2.x, yurr2.y, true)
+                        }
                         break;
                 }
                 drawGrid()
@@ -266,18 +319,44 @@
         // Instantiation
         const topAppBarElement = document.querySelector('.mdc-top-app-bar');
         const topAppBar = new mdc.topAppBar.MDCTopAppBar(topAppBarElement);
+        const helpDialog = new mdc.dialog.MDCDialog(document.querySelector('.mdc-dialog'));
         slider = new mdc.slider.MDCSlider(document.querySelector('.mdc-slider'));
         const buttons = document.querySelectorAll(".mdc-button");
         for (const button of buttons) {
             mdc.ripple.MDCRipple.attachTo(button);
         }
+        
 
         resolutionChanged()
 
+        let fileInput = document.getElementById("file")
+
+        fileInput.addEventListener("change", (e) => {
+            let fil = fileInput.files[0]
+            let fr = new FileReader()
+            fr.onload = (e) => {
+                let loadedMap = e.target.result
+
+                loadedMap = loadedMap.replace(/[ ,\n.]/g, "");
+                console.log(loadedMap)
+
+                data = []
+                resol = Math.sqrt(loadedMap.length)
+                slider.setValue(resol)
+                document.getElementById("current-resolution").innerHTML = resol
+
+                for(let i = 0; i < loadedMap.length; i++) {
+                    data.push(parseInt(loadedMap[i]))
+                }
+                drawGrid()
+            }
+            fr.readAsText(fil)
+        }) 
+
         //drawLine(2, 2, 15, 13)
         document.querySelector('.mdc-slider').addEventListener("MDCSlider:change", () => {
-            if(!isEmpty()) {
-                if(confirm("This will clear the map.")) {
+            if (!isEmpty()) {
+                if (confirm("This will clear the map.")) {
                     resolutionChanged()
                 } else {
                     slider.setValue(resol)
@@ -290,6 +369,17 @@
             }
         })
 
+        window.addEventListener("keydown", (e) => {
+            if (e.key == "Shift") {
+                shiftPressed = true
+            }
+        })
+
+        window.addEventListener("keyup", (e) => {
+            if (e.key == "Shift") {
+                shiftPressed = false
+            }
+        })
 
         function download() {
             let counter = 0
@@ -318,6 +408,10 @@
             document.body.appendChild(element)
             element.click()
             document.body.removeChild(element)
+        }
+
+        function help() {
+            helpDialog.open()
         }
     </script>
 </body>
