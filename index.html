@@ -48,10 +48,16 @@
         </div>
     </header>
     <main class="mdc-top-app-bar--fixed-adjust" style="text-align: center;">
-        <canvas id="myCanvas" width="1024" height="1024" style="border:1px solid #000000;"></canvas>
+        <div id="canvas-viewport" style="position: relative;">
+            <canvas id="grid-canvas" width="1024" height="1024"
+                style="background-color: transparent; position: absolute;"></canvas>
+            <canvas id="myCanvas" width="1024" height="1024"
+                style="border:1px solid #000000; position: absolute;"></canvas>
+        </div>
+
 
         <div class="mdc-slider mdc-slider--discrete">
-            <input class="mdc-slider__input" type="range" min="2" max="256" value="32" name="resolution" step="1"
+            <input class="mdc-slider__input" type="range" min="2" max="256" value="128" name="resolution" step="1"
                 aria-label="Discrete slider resolution">
             <div class="mdc-slider__track">
                 <div class="mdc-slider__track--inactive"></div>
@@ -63,7 +69,7 @@
                 <div class="mdc-slider__value-indicator-container" aria-hidden="true">
                     <div class="mdc-slider__value-indicator">
                         <span class="mdc-slider__value-indicator-text">
-                            32
+                            128
                         </span>
                     </div>
                 </div>
@@ -99,9 +105,10 @@
     </div>
 
     <script>
-        let resol = 32
+        let resol = 128
         let slider
         let c
+        let gridCanvas
 
         let isDrawing = false
         let lastMouseButton = 0
@@ -115,6 +122,9 @@
         let data = []
 
         let shiftPressed = false
+
+        let lastTileX = 0
+        let lastTileY = 0
 
         function isEmpty() {
             for (let x = 0; x < resol; x++) {
@@ -145,6 +155,16 @@
 
             let x = Math.floor(x0 / xInterval)
             let y = Math.floor(y0 / yInterval)
+
+            return { x, y }
+        }
+
+        function gridToScreen(x0, y0) {
+            let xInterval = c.width / resol
+            let yInterval = c.height / resol
+
+            let x = x0 * xInterval
+            let y = y0 * yInterval
 
             return { x, y }
         }
@@ -193,6 +213,25 @@
             }
         }
 
+        function line(x0, y0, x1, y1) {
+            var dx = Math.abs(x1 - x0);
+            var dy = Math.abs(y1 - y0);
+            var sx = (x0 < x1) ? 1 : -1;
+            var sy = (y0 < y1) ? 1 : -1;
+            var err = dx - dy;
+
+            while (true) {
+                modifyTile(x0, y0, false); // Do what you need to for this
+
+                if ((x0 === x1) && (y0 === y1)) break;
+                var e2 = 2 * err;
+                if (e2 > -dy) { err -= dy; x0 += sx; }
+                if (e2 < dx) { err += dx; y0 += sy; }
+            }
+
+            drawTiles()
+        }
+
         // Draw line on grid using Bresenham algorithm(https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm)
         function drawLine(x0, y0, x1, y1) {
             if (Math.abs(y1 - y0) < Math.abs(x1 - x0)) {
@@ -208,7 +247,7 @@
                     drawLineHigh(x0, y0, x1, y1)
                 }
             }
-            drawGrid()
+            drawTiles()
         }
 
         function rotateGrid() {
@@ -224,13 +263,13 @@
                 }
             }
 
-            drawGrid()
+            drawTiles()
         }
 
         function drawGrid() {
 
-            let ctx = c.getContext("2d")
-            ctx.clearRect(0, 0, c.width, c.height)
+            let ctx = gridCanvas.getContext("2d")
+            ctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height)
 
             for (let x = 0; x < resol; x++) {
                 let xx = c.width / resol;
@@ -247,6 +286,24 @@
                 ctx.lineTo(c.width, yyy)
                 ctx.stroke()
             }
+        }
+
+        function drawTile(x, y) {
+            let ctx = c.getContext("2d")
+
+            let xInterval = c.width / resol;
+            let yInterval = c.height / resol;
+
+            ctx.clearRect(x * xInterval, y * yInterval, xInterval, yInterval)
+
+            ctx.fillStyle = "black";
+            ctx.fill();
+            ctx.fillRect(xInterval * x, yInterval * y, xInterval, yInterval)
+        }
+
+        function drawTiles() {
+            let ctx = c.getContext("2d")
+            ctx.clearRect(0, 0, c.width, c.height)
 
             for (let x = 0; x < resol; x++) {
                 for (let y = 0; y < resol; y++) {
@@ -266,6 +323,7 @@
         }
 
         c = document.getElementById("myCanvas")
+        gridCanvas = document.getElementById("grid-canvas")
         c.oncontextmenu = (e) => { e.preventDefault(); e.stopPropagation(); }
 
         c.addEventListener('mousedown', e => {
@@ -292,7 +350,7 @@
                     modifyTile(xx, yy, true)
                     break;
             }
-            drawGrid();
+            drawTile(mouseX, mouseY)
         });
 
         c.addEventListener('mousemove', e => {
@@ -338,7 +396,14 @@
                         }
                         break;
                 }
-                drawGrid()
+                //console.log(lastTileX.toString() + yurr2.x.toString())
+                if (lastTileX != yurr2.x || lastTileY != yurr2.y) {
+                    //drawTile(yurr2.x, yurr2.y)
+                    console.log("drew tile")
+                    line(lastTileX, lastTileY, yurr2.x, yurr2.y)
+                }
+                lastTileX = yurr2.x
+                lastTileY = yurr2.y
             }
         });
 
@@ -363,7 +428,7 @@
         slider = new mdc.slider.MDCSlider(document.querySelector('.mdc-slider'));
 
         const tooltips = document.querySelectorAll(".mdc-tooltip");
-        for(const tooltip of tooltips) {
+        for (const tooltip of tooltips) {
             new mdc.tooltip.MDCTooltip(tooltip)
         }
 
@@ -374,7 +439,6 @@
 
 
         resolutionChanged()
-
         let fileInput = document.getElementById("file")
 
         fileInput.addEventListener("change", (e) => {
@@ -413,6 +477,8 @@
         document.querySelector('.mdc-slider').addEventListener("MDCSlider:change", () => {
             if (!isEmpty()) {
                 if (confirm("This will clear the map.")) {
+                    let ctx = c.getContext("2d")
+                    ctx.clearRect(0, 0, c.width, c.height)
                     resolutionChanged()
                 } else {
                     slider.setValue(resol)
