@@ -441,7 +441,7 @@
             let dataString = ""
             for (let y = 0; y < data.length; y++) {
                 for (let x = 0; x < data[y].length; x++) {
-                    dataString += (data[y][x].toString())
+                    dataString += (data[x][y].toString())
                     dataString += (",")
                     if (x != data[y].length - 1) {
                         dataString += (" ")
