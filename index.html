@@ -51,11 +51,10 @@
 
         <div id="canvas-viewport" style="position: relative;">
             <canvas id="grid-canvas" width="1024" height="1024"
-                style="background-color: transparent; position: absolute;"></canvas>
+                style="background-color: transparent; position: absolute; z-index: 1;"></canvas>
             <canvas id="myCanvas" width="1024" height="1024"
-                style="border:1px solid #000000; position: absolute;"></canvas>
+                style="border:1px solid #000000; position: absolute; z-index: 2;"></canvas>
         </div>
-
 
         <div class="mdc-slider mdc-slider--discrete">
             <input class="mdc-slider__input" type="range" min="2" max="512" value="128" name="resolution" step="1"
@@ -433,11 +432,8 @@
             fr.onload = (e) => {
                 let loadedMap = e.target.result
 
-
-
                 loadedMap = loadedMap.replace(/[ ,.]/g, "");
                 data = []
-
 
                 loadedMap = loadedMap.split("\n")
 
@@ -455,6 +451,7 @@
                 document.getElementById("current-resolution").innerHTML = resol
                 //console.log(data)
                 drawGrid()
+                drawTiles()
             }
             fr.readAsText(fil)
         })
