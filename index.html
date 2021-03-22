@@ -48,6 +48,7 @@
         </div>
     </header>
     <main class="mdc-top-app-bar--fixed-adjust" style="text-align: center;">
+
         <div id="canvas-viewport" style="position: relative;">
             <canvas id="grid-canvas" width="1024" height="1024"
                 style="background-color: transparent; position: absolute;"></canvas>
@@ -57,7 +58,7 @@
 
 
         <div class="mdc-slider mdc-slider--discrete">
-            <input class="mdc-slider__input" type="range" min="2" max="256" value="128" name="resolution" step="1"
+            <input class="mdc-slider__input" type="range" min="2" max="512" value="128" name="resolution" step="1"
                 aria-label="Discrete slider resolution">
             <div class="mdc-slider__track">
                 <div class="mdc-slider__track--inactive"></div>
@@ -69,7 +70,7 @@
                 <div class="mdc-slider__value-indicator-container" aria-hidden="true">
                     <div class="mdc-slider__value-indicator">
                         <span class="mdc-slider__value-indicator-text">
-                            128
+                            512
                         </span>
                     </div>
                 </div>
@@ -105,7 +106,7 @@
     </div>
 
     <script>
-        let resol = 128
+        let resol
         let slider
         let c
         let gridCanvas
@@ -213,7 +214,7 @@
             }
         }
 
-        function line(x0, y0, x1, y1) {
+        function line(x0, y0, x1, y1, erase) {
             var dx = Math.abs(x1 - x0);
             var dy = Math.abs(y1 - y0);
             var sx = (x0 < x1) ? 1 : -1;
@@ -221,15 +222,14 @@
             var err = dx - dy;
 
             while (true) {
-                modifyTile(x0, y0, false); // Do what you need to for this
+                modifyTile(x0, y0, erase)
+                drawTile(x0, y0, erase)
 
                 if ((x0 === x1) && (y0 === y1)) break;
                 var e2 = 2 * err;
                 if (e2 > -dy) { err -= dy; x0 += sx; }
                 if (e2 < dx) { err += dx; y0 += sy; }
             }
-
-            drawTiles()
         }
 
         // Draw line on grid using Bresenham algorithm(https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm)
@@ -288,17 +288,18 @@
             }
         }
 
-        function drawTile(x, y) {
+        function drawTile(x, y, erase) {
             let ctx = c.getContext("2d")
 
             let xInterval = c.width / resol;
             let yInterval = c.height / resol;
 
             ctx.clearRect(x * xInterval, y * yInterval, xInterval, yInterval)
-
-            ctx.fillStyle = "black";
-            ctx.fill();
-            ctx.fillRect(xInterval * x, yInterval * y, xInterval, yInterval)
+            if (!erase) {
+                ctx.fillStyle = "black";
+                ctx.fill();
+                ctx.fillRect(xInterval * x, yInterval * y, xInterval, yInterval)
+            }
         }
 
         function drawTiles() {
@@ -313,6 +314,7 @@
                         ctx.fillStyle = "black";
                         ctx.fill();
                         ctx.fillRect(xInterval * x, yInterval * y, xInterval, yInterval)
+                        //drawTile(x, y, false)
                     }
                 }
             }
@@ -342,15 +344,22 @@
             let xx = Math.floor(mouseX / xInterval)
             let yy = Math.floor(mouseY / yInterval)
 
+            let yurr = screenToGrid(pMouseX, pMouseY)
+            let yurr2 = screenToGrid(mouseX, mouseY)
+
             switch (e.button) {
                 case 0:
                     modifyTile(xx, yy, false)
+                    drawTile(xx, yy, false)
                     break;
                 case 2:
                     modifyTile(xx, yy, true)
+                    drawTile(xx, yy, true)
                     break;
             }
-            drawTile(mouseX, mouseY)
+
+            lastTileX = yurr2.x
+            lastTileY = yurr2.y
         });
 
         c.addEventListener('mousemove', e => {
@@ -370,37 +379,14 @@
                     up = true
                 }
 
-                switch (lastMouseButton) {
-                    case 0:
-                        //drawLine(yurr.x, yurr.y, yurr2.x, yurr2.y, false)
-                        if (shiftPressed) {
-                            if (up) {
-                                modifyTile(screenToGrid(pMouseX, pMouseX).x, yurr2.y, false)
-                            } else {
-                                modifyTile(yurr2.x, screenToGrid(pMouseY, pMouseY).y, false)
-                            }
-                        } else {
-                            modifyTile(yurr2.x, yurr2.y, false)
-                        }
-                        break;
-                    case 2:
-                        //drawLine(pMouseX, pMouseY, mouseX, mouseY, true)
-                        if (shiftPressed) {
-                            if (up) {
-                                modifyTile(screenToGrid(pMouseX, pMouseX).x, yurr2.y, true)
-                            } else {
-                                modifyTile(yurr2.x, screenToGrid(pMouseY, pMouseY).y, true)
-                            }
-                        } else {
-                            modifyTile(yurr2.x, yurr2.y, true)
-                        }
-                        break;
-                }
-                //console.log(lastTileX.toString() + yurr2.x.toString())
                 if (lastTileX != yurr2.x || lastTileY != yurr2.y) {
-                    //drawTile(yurr2.x, yurr2.y)
-                    console.log("drew tile")
-                    line(lastTileX, lastTileY, yurr2.x, yurr2.y)
+                    if (lastMouseButton == 2) {
+                        console.log("drew tile")
+
+                        line(lastTileX, lastTileY, yurr2.x, yurr2.y, true)
+                    } else {
+                        line(lastTileX, lastTileY, yurr2.x, yurr2.y, false)
+                    }
                 }
                 lastTileX = yurr2.x
                 lastTileY = yurr2.y
