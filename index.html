@@ -126,6 +126,8 @@
         let lastTileX = 0
         let lastTileY = 0
 
+        let brushRadius = 4
+
         function isEmpty() {
             for (let x = 0; x < resol; x++) {
                 for (let y = 0; y < resol; y++) {
@@ -293,11 +295,15 @@
             let xInterval = c.width / resol;
             let yInterval = c.height / resol;
 
-            ctx.clearRect(x * xInterval, y * yInterval, xInterval, yInterval)
-            if (!erase) {
-                ctx.fillStyle = "black";
-                ctx.fill();
-                ctx.fillRect(xInterval * x, yInterval * y, xInterval, yInterval)
+            for (let ex = x - brushRadius; ex <= x + brushRadius; ex++) {
+                for (let wy = y - brushRadius; wy <= y + brushRadius; wy++) {
+                    ctx.clearRect(ex * xInterval, wy * yInterval, xInterval, yInterval)
+                    if (!erase) {
+                        ctx.fillStyle = "black";
+                        ctx.fill();
+                        ctx.fillRect(xInterval * ex, yInterval * wy, xInterval, yInterval)
+                    }
+                }
             }
         }
 
@@ -320,7 +326,11 @@
         }
 
         function modifyTile(x, y, shouldErase) {
-            data[x][y] = shouldErase ? 0 : 1
+            for (let ex = x - brushRadius; ex <= x + brushRadius; ex++) {
+                for (let wy = y - brushRadius; wy <= y + brushRadius; wy++) {
+                    data[ex][wy] = shouldErase ? 0 : 1
+                }
+            }
         }
 
         c = document.getElementById("myCanvas")
