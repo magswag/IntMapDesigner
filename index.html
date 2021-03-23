@@ -57,7 +57,7 @@
         </div>
 
         <div class="mdc-slider mdc-slider--discrete">
-            <input class="mdc-slider__input" type="range" min="2" max="512" value="128" name="resolution" step="1"
+            <input class="mdc-slider__input" type="range" min="2" max="256" value="64" name="resolution" step="1"
                 aria-label="Discrete slider resolution">
             <div class="mdc-slider__track">
                 <div class="mdc-slider__track--inactive"></div>
@@ -69,7 +69,7 @@
                 <div class="mdc-slider__value-indicator-container" aria-hidden="true">
                     <div class="mdc-slider__value-indicator">
                         <span class="mdc-slider__value-indicator-text">
-                            512
+                            64
                         </span>
                     </div>
                 </div>
@@ -77,6 +77,19 @@
             </div>
 
         </div>
+
+        <input type="radio" name="tool" value="Brush" id="tool-brush">
+        <label for="tool-brush">Brush</label>
+        <input type="radio" name="tool" value="Line" id="tool-line">
+        <label for="tool-line">Line</label>
+        <input type="radio" name="tool" value="Ellipse" id="tool-ellipse">
+        <label for="tool-ellipse">Ellipse</label>
+        <input type="radio" name="tool" value="Rectangle" id="tool-rectangle">
+        <label for="tool-rectangle">Rectangle</label>
+        <input type="radio" name="tool" value="Fill" id="tool-fill">
+        <label for="tool-fill">Fill</label>
+        
+
         <p id="current-resolution">32</p>
         <label for="file">Load map:</label>
 
@@ -105,6 +118,24 @@
     </div>
 
     <script>
+        class Brush {
+            constructor() {
+
+            }
+
+            onDown(e) {
+                
+            }
+
+            onMove(e) {
+                
+            }
+
+            onUp(e) {
+
+            }
+        }
+
         let resol
         let slider
         let c
@@ -126,7 +157,7 @@
         let lastTileX = 0
         let lastTileY = 0
 
-        let brushRadius = 4
+        let brushRadius = 3
 
         function isEmpty() {
             for (let x = 0; x < resol; x++) {
